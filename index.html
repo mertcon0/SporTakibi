@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spor Takip</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spor">
+<meta name="theme-color" content="#000000">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#000;color:#eee;font:16px -apple-system,system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));background:#000;border-bottom:1px solid #222;z-index:5}
+header h1{font-size:20px;margin:0}
+#mb{background:none;border:0;color:#e11d2e;font-size:30px;line-height:1;padding:0}
+main{padding:16px;max-width:600px;margin:auto}
+.card{background:#141414;border:1px solid #222;border-radius:12px;padding:14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+input,select{width:100%;padding:12px;margin:4px 0;background:#111;color:#fff;border:1px solid #333;border-radius:10px;font-size:16px}
+.b{width:100%;padding:13px;margin:6px 0;background:#e11d2e;color:#fff;border:0;border-radius:10px;font-size:16px;font-weight:600}
+.g{background:#222}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.mut{color:#888;font-size:13px}
+.x{background:none;border:0;color:#e11d2e;font-size:20px}
+#ov{display:none;position:fixed;inset:0;background:#000a;z-index:9}
+#dr{position:fixed;top:0;bottom:0;left:-270px;width:250px;background:#0c0c0c;z-index:10;padding-top:calc(70px + env(safe-area-inset-top));transition:left .2s;border-right:1px solid #222}
+body.o #dr{left:0}body.o #ov{display:block}
+#dr a{display:block;padding:16px 24px;font-size:18px}#dr a.on{color:#e11d2e;font-weight:700}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+.tabs button{flex:none;padding:8px 14px;border-radius:20px;border:1px solid #333;background:#111;color:#ccc}
+.tabs .on{background:#e11d2e;color:#fff;border-color:#e11d2e}
+</style></head><body>
+<header><button id="mb" onclick="nav(true)">☰</button><h1 id="ti"></h1></header>
+<div id="ov" onclick="nav(false)"></div>
+<nav id="dr">
+<a id="n-moves" onclick="go('moves')">Ağırlık</a>
+<a id="n-parts" onclick="go('parts')">Ölçü</a>
+<a id="n-plan" onclick="go('plan')">Program</a>
+</nav>
+<main id="app"></main>
+<script>
+const K='sporTakip';let S;
+try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+S=S||{moves:[],parts:[{id:'kilo',name:'Kilo',unit:'kg',hist:[]}],plan:{}};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Kayıt yapılamadı')}};
+const $=i=>document.getElementById(i);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fd=t=>new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const DAYS=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'],ORD=[1,2,3,4,5,6,0];
+let V={t:'moves'};
+const D=()=>V.day??new Date().getDay();
+const num=id=>parseFloat(String($(id).value).replace(',','.'));
+function nav(x){document.body.classList.toggle('o',x)}
+function go(t,id,day){V={t,id,day};nav(false);r();scrollTo(0,0)}
+function tabs(t){const d=D();return '<div class=tabs>'+ORD.map(i=>`<button class="${i==d?'on':''}" onclick="go('${t}',null,${i})">${DAYS[i].slice(0,3)}</button>`).join('')+'</div>'}
+function r(){
+ const t=V.t,m=S.moves.find(x=>x.id==V.id),p=S.parts.find(x=>x.id==V.id);let h='',T='';
+ if(t=='moves'){T='Ağırlıklar';
+  h=`<input id=mn placeholder="Hareket adı"><input id=mw type=number inputmode=decimal step=any placeholder="Ağırlık (kg)"><button class=b onclick=addMove()>Hareket ekle</button>`+
+  (S.moves.map(x=>`<div class=card onclick="go('move','${x.id}')"><b>${esc(x.name)}</b><span>${x.w} kg</span></div>`).join('')||'<p class=mut>Henüz hareket yok.</p>')}
+ else if(t=='move'&&m){T=m.name;
+  h=`<button class="b g" onclick="go('moves')">‹ Geri</button><div class=card><span>Güncel ağırlık</span><b>${m.w} kg</b></div>
+  <input id=nw type=number inputmode=decimal step=any value="${m.w}"><button class=b onclick="updMove('${m.id}')">Ağırlığı güncelle</button><h3>Geçmiş</h3>`+
+  (m.hist.map(x=>`<div class=card><b>${x.w} kg</b><span class=mut>${fd(x.d)} tarihinde değiştirildi</span></div>`).join('')||'<p class=mut>Henüz değişiklik yok.</p>')+
+  `<button class="b g" onclick="delMove('${m.id}')">Hareketi sil</button>`}
+ else if(t=='parts'){T='Ölçüler';
+  h=`<input id=pn placeholder="Yeni bölge (örn. Bel çevresi, Biceps)"><input id=pu placeholder="Birim (varsayılan: cm)"><button class=b onclick=addPart()>Bölge ekle</button>`+
+  S.parts.map(x=>{const l=x.hist[0];return `<div class=card onclick="go('part','${x.id}')"><div><b>${esc(x.name)}</b><div class=mut>${l?fd(l.d):'Kayıt yok'}</div></div><span>${l?l.v+' '+esc(x.unit):'–'}</span></div>`}).join('')}
+ else if(t=='part'&&p){T=p.name;
+  h=`<button class="b g" onclick="go('parts')">‹ Geri</button><input id=pv type=number inputmode=decimal step=any placeholder="Değer (${esc(p.unit)})"><button class=b onclick="addVal('${p.id}')">Ölçüyü kaydet</button><h3>Son ${p.hist.length} ölçü (en fazla 15)</h3>`+
+  (p.hist.map(x=>`<div class=card><b>${x.v} ${esc(p.unit)}</b><span class=mut>${fd(x.d)}</span></div>`).join('')||'<p class=mut>Henüz kayıt yok.</p>')+
+  (p.id=='kilo'?'':`<button class="b g" onclick="delPart('${p.id}')">Bölgeyi sil</button>`)}
+ else if(t=='plan'){T='Program';const d=D(),has=Object.values(S.plan).some(a=>a.length);
+  h=tabs('plan')+`<h3>${DAYS[d]}${d==new Date().getDay()?' (bugün)':''}</h3>`+
+  ((S.plan[d]||[]).map(x=>{const mv=S.moves.find(y=>y.id==x.m);return mv?`<div class=card onclick="go('move','${mv.id}')"><div><b>${esc(mv.name)}</b><div class=mut>${x.s} set × ${esc(x.r)} tekrar</div></div><span>${mv.w} kg</span></div>`:''}).join('')||'<p class=mut>Bu gün için hareket yok.</p>')+
+  `<button class=b onclick="go('edit',null,${d})">${has?'Programı düzenle':'Spor programı oluştur'}</button>`}
+ else if(t=='edit'){T='Program oluştur';const d=D();
+  h=tabs('edit')+`<h3>${DAYS[d]}</h3>`+
+  ((S.plan[d]||[]).map((x,i)=>{const mv=S.moves.find(y=>y.id==x.m);return mv?`<div class=card><div><b>${esc(mv.name)}</b><div class=mut>${x.s} set × ${esc(x.r)} tekrar</div></div><button class=x onclick="delItem(${d},${i})">✕</button></div>`:''}).join(''))+
+  (S.moves.length?`<select id=ei>${S.moves.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><div class=row><input id=es type=number inputmode=numeric placeholder="Set"><input id=er placeholder="Tekrar (örn. 10)"></div><button class=b onclick="addItem(${d})">Hareketi güne ekle</button>`:'<p class=mut>Önce Ağırlık sayfasından hareket ekleyin.</p>')+
+  `<button class="b g" onclick="go('plan',null,${d})">Bitti</button>`}
+ else{go('moves');return}
+ $('ti').textContent=T;$('app').innerHTML=h;
+ const nm={moves:'moves',move:'moves',parts:'parts',part:'parts',plan:'plan',edit:'plan'}[V.t];
+ ['moves','parts','plan'].forEach(k=>$('n-'+k).className=k==nm?'on':'');
+}
+function addMove(){const n=$('mn').value.trim(),w=num('mw');if(!n||isNaN(w))return alert('Ad ve ağırlık girin');
+ S.moves.push({id:uid(),name:n,w,d:Date.now(),hist:[]});save();r()}
+function updMove(id){const m=S.moves.find(x=>x.id==id),w=num('nw');if(isNaN(w))return;
+ if(w!==m.w){m.hist.unshift({w:m.w,d:Date.now()});m.w=w;m.d=Date.now();save()}r()}
+function delMove(id){if(!confirm('Hareket silinsin mi?'))return;
+ S.moves=S.moves.filter(x=>x.id!=id);for(const k in S.plan)S.plan[k]=S.plan[k].filter(x=>x.m!=id);save();go('moves')}
+function addPart(){const n=$('pn').value.trim();if(!n)return;
+ S.parts.push({id:uid(),name:n,unit:$('pu').value.trim()||'cm',hist:[]});save();r()}
+function addVal(id){const p=S.parts.find(x=>x.id==id),v=num('pv');if(isNaN(v))return;
+ p.hist.unshift({v,d:Date.now()});p.hist=p.hist.slice(0,15);save();r()}
+function delPart(id){if(!confirm('Bölge ve tüm kayıtları silinsin mi?'))return;S.parts=S.parts.filter(x=>x.id!=id);save();go('parts')}
+function addItem(d){const s=parseInt($('es').value),rp=$('er').value.trim();if(!s||!rp)return alert('Set ve tekrar girin');
+ (S.plan[d]=S.plan[d]||[]).push({m:$('ei').value,s,r:rp});save();r()}
+function delItem(d,i){S.plan[d].splice(i,1);save();r()}
+r();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
+</script></body></html>
