@@ -11,11 +11,14 @@
 <meta name="theme-color" content="#000000">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#000;color:#eee;font:16px -apple-system,system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+body{margin:0;background:#000;color:#eee;font:16px -apple-system,system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom);min-height:100vh;display:flex;flex-direction:column}
 header{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));background:#000;border-bottom:1px solid #222;z-index:5}
 header h1{font-size:20px;margin:0}
 #mb{background:none;border:0;color:#e11d2e;font-size:30px;line-height:1;padding:0}
-main{padding:16px;max-width:600px;margin:auto}
+main{padding:16px;max-width:600px;width:100%;margin:0 auto;flex:1}
+.ft{text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0 16px}
+.lab{color:#888;font-size:13px;margin:10px 0 0}
+svg text{fill:#888;font-size:10px}
 .card{background:#141414;border:1px solid #222;border-radius:12px;padding:14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
 input,select{width:100%;padding:12px;margin:4px 0;background:#111;color:#fff;border:1px solid #333;border-radius:10px;font-size:16px}
 .b{width:100%;padding:13px;margin:6px 0;background:#e11d2e;color:#fff;border:0;border-radius:10px;font-size:16px;font-weight:600}
@@ -39,22 +42,36 @@ body.o #dr{left:0}body.o #ov{display:block}
 <a id="n-plan" onclick="go('plan')">Program</a>
 </nav>
 <main id="app"></main>
+<div class="ft">Son Güncelleme: 09.10.2026 21:23</div>
 <script>
 const K='sporTakip';let S;
 try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
 S=S||{moves:[],parts:[{id:'kilo',name:'Kilo',unit:'kg',hist:[]}],plan:{}};
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Kayıt yapılamadı')}};
+S.parts.forEach(p=>p.unit=p.id=='kilo'?'kg':'cm');save();
 const $=i=>document.getElementById(i);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fd=t=>new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const DAYS=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'],ORD=[1,2,3,4,5,6,0];
-let V={t:'moves'};
+let V={t:'plan'};
 const D=()=>V.day??new Date().getDay();
 const num=id=>parseFloat(String($(id).value).replace(',','.'));
 function nav(x){document.body.classList.toggle('o',x)}
 function go(t,id,day){V={t,id,day};nav(false);r();scrollTo(0,0)}
 function tabs(t){const d=D();return '<div class=tabs>'+ORD.map(i=>`<button class="${i==d?'on':''}" onclick="go('${t}',null,${i})">${DAYS[i].slice(0,3)}</button>`).join('')+'</div>'}
+function chart(pts){
+ if(pts.length<2)return '<p class=mut>Grafik için en az 2 kayıt gerekli.</p>';
+ const W=320,H=170,L=38,R=14,T=22,B=26,vs=pts.map(p=>p.v);let mn=Math.min(...vs),mx=Math.max(...vs);
+ if(mn==mx){mn-=1;mx+=1}const pd=(mx-mn)*.1;mn-=pd;mx+=pd;
+ const X=i=>L+i*(W-L-R)/(pts.length-1),Y=v=>T+(mx-v)*(H-T-B)/(mx-mn),f=n=>+n.toFixed(1);
+ let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#0c0c0c;border:1px solid #222;border-radius:12px;margin:8px 0">`;
+ for(let k=0;k<=3;k++){const v=mn+(mx-mn)*k/3,y=Y(v);s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#222"/><text x="${L-4}" y="${y+3}" text-anchor="end">${f(v)}</text>`}
+ s+=`<polyline fill="none" stroke="#e11d2e" stroke-width="2" points="${pts.map((p,i)=>X(i)+','+Y(p.v)).join(' ')}"/>`;
+ pts.forEach((p,i)=>{s+=`<circle cx="${X(i)}" cy="${Y(p.v)}" r="3" fill="#e11d2e"/>`;if(pts.length<=8)s+=`<text x="${X(i)}" y="${Y(p.v)-7}" text-anchor="middle" style="fill:#ddd">${p.v}</text>`});
+ const a=pts[0].d,b=pts[pts.length-1].d,sd=t=>new Date(t).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'});
+ if(a&&b)s+=`<text x="${L}" y="${H-8}">${sd(a)}</text><text x="${W-R}" y="${H-8}" text-anchor="end">${sd(b)}</text>`;
+ return s+'</svg>'}
 function r(){
  const t=V.t,m=S.moves.find(x=>x.id==V.id),p=S.parts.find(x=>x.id==V.id);let h='',T='';
  if(t=='moves'){T='Ağırlıklar';
@@ -62,14 +79,14 @@ function r(){
   (S.moves.map(x=>`<div class=card onclick="go('move','${x.id}')"><b>${esc(x.name)}</b><span>${x.w} kg</span></div>`).join('')||'<p class=mut>Henüz hareket yok.</p>')}
  else if(t=='move'&&m){T=m.name;
   h=`<button class="b g" onclick="go('moves')">‹ Geri</button><div class=card><span>Güncel ağırlık</span><b>${m.w} kg</b></div>
-  <input id=nw type=number inputmode=decimal step=any value="${m.w}"><button class=b onclick="updMove('${m.id}')">Ağırlığı güncelle</button><h3>Geçmiş</h3>`+
+  <input id=nw type=number inputmode=decimal step=any value="${m.w}"><button class=b onclick="updMove('${m.id}')">Ağırlığı güncelle</button><h3>Grafik</h3>${chart(m.hist.slice().reverse().map(x=>({v:x.w})).concat([{v:m.w}]))}<h3>Geçmiş</h3>`+
   (m.hist.map(x=>`<div class=card><b>${x.w} kg</b><span class=mut>${fd(x.d)} tarihinde değiştirildi</span></div>`).join('')||'<p class=mut>Henüz değişiklik yok.</p>')+
   `<button class="b g" onclick="delMove('${m.id}')">Hareketi sil</button>`}
  else if(t=='parts'){T='Ölçüler';
-  h=`<input id=pn placeholder="Yeni bölge (örn. Bel çevresi, Biceps)"><input id=pu placeholder="Birim (varsayılan: cm)"><button class=b onclick=addPart()>Bölge ekle</button>`+
+  h=`<div class=lab>Bölge adı</div><input id=pn placeholder="örn. Bel çevresi, Biceps"><p class=mut>Birim: cm (kilo için kg)</p><button class=b onclick=addPart()>Bölge ekle</button>`+
   S.parts.map(x=>{const l=x.hist[0];return `<div class=card onclick="go('part','${x.id}')"><div><b>${esc(x.name)}</b><div class=mut>${l?fd(l.d):'Kayıt yok'}</div></div><span>${l?l.v+' '+esc(x.unit):'–'}</span></div>`}).join('')}
  else if(t=='part'&&p){T=p.name;
-  h=`<button class="b g" onclick="go('parts')">‹ Geri</button><input id=pv type=number inputmode=decimal step=any placeholder="Değer (${esc(p.unit)})"><button class=b onclick="addVal('${p.id}')">Ölçüyü kaydet</button><h3>Son ${p.hist.length} ölçü (en fazla 15)</h3>`+
+  h=`<button class="b g" onclick="go('parts')">‹ Geri</button><input id=pv type=number inputmode=decimal step=any placeholder="Değer (${esc(p.unit)})"><button class=b onclick="addVal('${p.id}')">Ölçüyü kaydet</button><h3>Grafik</h3>${chart(p.hist.slice().reverse())}<h3>Son ${p.hist.length} ölçü (en fazla 15)</h3>`+
   (p.hist.map(x=>`<div class=card><b>${x.v} ${esc(p.unit)}</b><span class=mut>${fd(x.d)}</span></div>`).join('')||'<p class=mut>Henüz kayıt yok.</p>')+
   (p.id=='kilo'?'':`<button class="b g" onclick="delPart('${p.id}')">Bölgeyi sil</button>`)}
  else if(t=='plan'){T='Program';const d=D(),has=Object.values(S.plan).some(a=>a.length);
@@ -81,7 +98,7 @@ function r(){
   ((S.plan[d]||[]).map((x,i)=>{const mv=S.moves.find(y=>y.id==x.m);return mv?`<div class=card><div><b>${esc(mv.name)}</b><div class=mut>${x.s} set × ${esc(x.r)} tekrar</div></div><button class=x onclick="delItem(${d},${i})">✕</button></div>`:''}).join(''))+
   (S.moves.length?`<select id=ei>${S.moves.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><div class=row><input id=es type=number inputmode=numeric placeholder="Set"><input id=er placeholder="Tekrar (örn. 10)"></div><button class=b onclick="addItem(${d})">Hareketi güne ekle</button>`:'<p class=mut>Önce Ağırlık sayfasından hareket ekleyin.</p>')+
   `<button class="b g" onclick="go('plan',null,${d})">Bitti</button>`}
- else{go('moves');return}
+ else{go('plan');return}
  $('ti').textContent=T;$('app').innerHTML=h;
  const nm={moves:'moves',move:'moves',parts:'parts',part:'parts',plan:'plan',edit:'plan'}[V.t];
  ['moves','parts','plan'].forEach(k=>$('n-'+k).className=k==nm?'on':'');
@@ -93,7 +110,7 @@ function updMove(id){const m=S.moves.find(x=>x.id==id),w=num('nw');if(isNaN(w))r
 function delMove(id){if(!confirm('Hareket silinsin mi?'))return;
  S.moves=S.moves.filter(x=>x.id!=id);for(const k in S.plan)S.plan[k]=S.plan[k].filter(x=>x.m!=id);save();go('moves')}
 function addPart(){const n=$('pn').value.trim();if(!n)return;
- S.parts.push({id:uid(),name:n,unit:$('pu').value.trim()||'cm',hist:[]});save();r()}
+ S.parts.push({id:uid(),name:n,unit:'cm',hist:[]});save();r()}
 function addVal(id){const p=S.parts.find(x=>x.id==id),v=num('pv');if(isNaN(v))return;
  p.hist.unshift({v,d:Date.now()});p.hist=p.hist.slice(0,15);save();r()}
 function delPart(id){if(!confirm('Bölge ve tüm kayıtları silinsin mi?'))return;S.parts=S.parts.filter(x=>x.id!=id);save();go('parts')}
